@@ -43,6 +43,9 @@ import java.util.concurrent.TimeUnit;
 
 public class PlayerFragment extends Fragment implements View.OnClickListener, SongAdapter.onItemClickListner {
     public static final String POSISSON = "posisson";
+    private static int songEnded = 0;
+    boolean mBroadcastIsRegistered;
+    boolean mBufferBroadcastIsRegistered;
     private RecyclerView recyclerView;
     private View view;
     private TextView tvNameSong;
@@ -68,9 +71,12 @@ public class PlayerFragment extends Fragment implements View.OnClickListener, So
     private SongManager manager;
     private SongAdapter adapter;
     private int seekMax;
-    private static int songEnded = 0;
-    boolean mBroadcastIsRegistered;
-    boolean mBufferBroadcastIsRegistered;
+    public BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent serviceIntent) {
+            updaUI(serviceIntent);
+        }
+    };
     private boolean isClickClock;
 
     public PlayerFragment() {
@@ -91,16 +97,10 @@ public class PlayerFragment extends Fragment implements View.OnClickListener, So
         manager = new SongManager();
         arrayList = manager.getAll(getActivity());
         adapter = new SongAdapter(arrayList, getActivity());
-        recyclerView.setAdapter(adapter);
-        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
-        recyclerView.setItemAnimator(new DefaultItemAnimator());
-
-
-        songItem = new Song();
-        manager = new SongManager();
-        arrayList = manager.getAll(getActivity());
         adapter.setOnItemClickListner(this);
-        adapter = new SongAdapter(arrayList, getActivity());
+        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+        recyclerView.setAdapter(adapter);
+        recyclerView.setItemAnimator(new DefaultItemAnimator());
 
         imgBack = (ImageButton) view.findViewById(R.id.img_previous);
         imgNext = (ImageButton) view.findViewById(R.id.img_next_song);
@@ -166,13 +166,6 @@ public class PlayerFragment extends Fragment implements View.OnClickListener, So
         super.onStart();
     }
 
-    public BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent serviceIntent) {
-            updaUI(serviceIntent);
-        }
-    };
-
     private void updaUI(Intent serviceIntent) {
         String counter = serviceIntent.getStringExtra("counter");
         final String mediamax = serviceIntent.getStringExtra("mediamax");
@@ -189,7 +182,7 @@ public class PlayerFragment extends Fragment implements View.OnClickListener, So
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
-
+                songService.porogess(seekBar.getProgress());
             }
 
             @Override
@@ -225,7 +218,7 @@ public class PlayerFragment extends Fragment implements View.OnClickListener, So
                 if (isConnected) {
                     startedSongS();
                     getActivity().registerReceiver(broadcastReceiver, new IntentFilter(
-                            songService.ACTION_BROASCAST));
+                            SongService.ACTION_BROASCAST));
                     mBroadcastIsRegistered = true;
 
                 }
@@ -235,6 +228,7 @@ public class PlayerFragment extends Fragment implements View.OnClickListener, So
                     songService.playPauseSong();
                     imgPlay.setVisibility(View.VISIBLE);
                     imgStop.setVisibility(View.GONE);
+
                 }
                 break;
             case R.id.img_next_song:
@@ -522,13 +516,13 @@ public class PlayerFragment extends Fragment implements View.OnClickListener, So
     public void onResume() {
         if (!mBufferBroadcastIsRegistered) {
             getActivity().registerReceiver(broadcastReceiver, new IntentFilter(
-                    songService.ACTION_BROASCAST
+                    SongService.ACTION_BROASCAST
             ));
             mBufferBroadcastIsRegistered = true;
         }
         if (!mBroadcastIsRegistered) {
             getActivity().registerReceiver(broadcastReceiver, new IntentFilter(
-                    songService.ACTION_BROASCAST
+                    SongService.ACTION_BROASCAST
             ));
             mBroadcastIsRegistered = true;
         }
